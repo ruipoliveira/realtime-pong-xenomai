@@ -15,88 +15,83 @@
 #define TASK_MODE 0   // No flags
 #define TASK_STKSZ 0  // Default stack size
 
-#define TASK_A_PRIO 99  // RT priority [0..99]
-#define TASK_A_PERIOD_NS 1000000000 // Task period, in ns
+#define TASK_CINEMATICA_PRIO 99  // RT priority [0..99]
+#define TASK_CINEMATICA_PERIOD_NS 1000000000 // Task period, in ns
 
 #define TASK_B_PRIO 90  // priority
 #define TASK_B_PERIOD_NS  45000000 // Task period, in ns
 
 #define TASK_LOAD_NS      10000000 // Task execution time, in ns (same to all tasks)
 
-RT_TASK task_a_desc; // Task decriptor
+RT_TASK task_cinematica_desc; // Task decriptor
 RT_TASK task_b_desc; // Task decriptor
 
 
 void catch_signal(int sig) {}
 
 void wait_for_ctrl_c(void) {
-  signal(SIGTERM, catch_signal); //catch_signal is called if SIGTERM received
-  signal(SIGINT, catch_signal);  //catch_signal is called if SIGINT received
+	signal(SIGTERM, catch_signal); //catch_signal is called if SIGTERM received
+	signal(SIGINT, catch_signal);  //catch_signal is called if SIGINT received
 
-  // Wait for CTRL+C or sigterm
-  pause();
-  
-  // Will terminate
-  rt_printf("Terminating ...\n");
+	// Wait for CTRL+C or sigterm
+	pause();
+
+	// Will terminate
+	rt_printf("Terminating ...\n");
 }
 
 /*
 * Simulates the computational load of tasks
 */ 
 void simulate_load(RTIME load_ns) {
-  RTIME ti, tf;
-  
-  ti=rt_timer_read(); // Get initial time
-  tf=ti+load_ns;      // Compute end time
-  while(rt_timer_read() < tf); // Busy wait
+	RTIME ti, tf;
 
-  return;
+	ti=rt_timer_read(); // Get initial time
+	tf=ti+load_ns;      // Compute end time
+	while(rt_timer_read() < tf); // Busy wait
+
+	return;
 }
 
 
 /*
 * Task body implementation
 */
-void task_code(void *task_period_ns) {
-  RT_TASK *curtask;
-  RT_TASK_INFO curtaskinfo;
-  int *task_period;
+void task_cinematica_code(void *task_period_ns) {
+	RT_TASK *curtask;
+	RT_TASK_INFO curtaskinfo;
+	int *task_period;
 
-  RTIME to=0,ta=0;
-  unsigned long overruns;
-  int err;
-  
-  /* Get task information */
-  curtask=rt_task_self();
-  rt_task_inquire(curtask,&curtaskinfo);
-  rt_printf("%s init\n", curtaskinfo.name);
-  task_period=(int *)task_period_ns;
-  
-  /* Set task as periodic */
-  err=rt_task_set_periodic(NULL, TM_NOW, *task_period);
-  for(;;) {
-    err=rt_task_wait_period(&overruns);
-    ta=rt_timer_read();
-    if(err) {
-      rt_printf("%s overrun!!!\n", curtaskinfo.name);
-      break;
-    }
-    rt_printf("%s activation\n", curtaskinfo.name);
-    if(to!=0) 
-      rt_printf("Measured period (ns)= %lu\n",ta-to);
-    to=ta;
-    
-    /* Task "load" */
-    simulate_load(TASK_LOAD_NS);
-  }
-  return;
+	RTIME to=0,ta=0;
+	unsigned long overruns;
+	int err;
+
+	/* Get task information */
+	curtask=rt_task_self();
+	rt_task_inquire(curtask,&curtaskinfo);
+	rt_printf("%s init\n", curtaskinfo.name);
+	task_period=(int *)task_period_ns;
+
+	/* Set task as periodic */
+	err=rt_task_set_periodic(NULL, TM_NOW, *task_period);
+	for(;;) {
+		err=rt_task_wait_period(&overruns);
+		ta=rt_timer_read();
+		if(err) {
+			rt_printf("%s overrun!!!\n", curtaskinfo.name);
+			break;
+		}
+		rt_printf("%s activation\n", curtaskinfo.name);
+		
+		if(to!=0) 
+			rt_printf("Measured period (ns)= %lu\n",ta-to);
+		to=ta;
+
+		/* Task "load" */
+		simulate_load(TASK_LOAD_NS);
+	}
+	return;
 }
-
-
-
-
-/////////////////////////////////////////////////////////////////
-
 
 
 
@@ -610,46 +605,24 @@ static void draw_player_1_score() {
 
 int main() {
 	
-
-/*
 	int err, 
-	task_a_period_ns=TASK_A_PERIOD_NS, 
-	task_b_period_ns=TASK_B_PERIOD_NS;
-*/
-	/* Perform auto-init of rt_print buffers if the task doesn't do so */
-//	rt_print_auto_init(1);
+	task_cinematica_period_ns=TASK_CINEMATICA_PERIOD_NS; 
+
+	rt_print_auto_init(1);
 
 	/* Lock memory to prevent paging */
-//	mlockall(MCL_CURRENT|MCL_FUTURE);
+	mlockall(MCL_CURRENT|MCL_FUTURE);
 
-	/* Create RT task */
-	/* Args: descriptor, name, stack size, prioritry [0..99] and mode (flags for CPU, FPU, joinable ...) */
-	
-	/*err=rt_task_create(&task_a_desc, "Task a", TASK_STKSZ, TASK_A_PRIO, TASK_MODE);
+
+	err=rt_task_create(&task_cinematica_desc, "Task a", TASK_STKSZ, TASK_CINEMATICA_PRIO, TASK_MODE);
 	if(err) {
-	rt_printf("Error creating task a (error code = %d)\n",err);
-	return err;
+		rt_printf("Error creating task a (error code = %d)\n",err);
+		return err;
 	} else 
-	rt_printf("Task a created successfully\n");
-
-	err=rt_task_create(&task_b_desc, "Task b", TASK_STKSZ, TASK_B_PRIO, TASK_MODE);
-	if(err) {
-	rt_printf("Error creating task b (error code = %d)\n",err);
-	return err;
-
-	} else 
-	rt_printf("Task b created successfully\n");
-*/
-	/* Start RT task */
-	/* Args: task decriptor, address of function/implementation and argument*/
-
-//	rt_task_start(&task_a_desc, &task_code, (void *)&task_a_period_ns);
-//	rt_task_start(&task_b_desc, &task_code, (void *)&task_b_period_ns);
-
-	/* wait for termination signal */ 
-//	wait_for_ctrl_c();
+		rt_printf("Task a created successfully\n");
 
 
+	rt_task_start(&task_cinematica_desc, &task_cinematica_code, (void *)&task_cinematica_period_ns);
 
 	SDL_Surface *temp;
 
