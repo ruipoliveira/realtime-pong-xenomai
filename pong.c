@@ -5,12 +5,17 @@
 #include <signal.h>
 #include "SDL/SDL.h"
 
+#include <sys/types.h>
+#include <fcntl.h>
+
 #include <sys/mman.h> // For mlockall
 #include <native/task.h>
 #include <native/timer.h>
+#include <native/pipe.h>
 
 #include  <rtdk.h> // Provides rt_print functions
 
+#define PIPE_MINOR 0
 
 #define TASK_MODE 0   // No flags
 #define TASK_STKSZ 0  // Default stack size
@@ -25,6 +30,37 @@
 
 RT_TASK task_cinematica_desc; // Task decriptor
 RT_TASK task_b_desc; // Task decriptor
+
+#define PIPE_SIZE 255
+RT_PIPE mypipe;
+
+
+
+typedef struct ball_s {
+
+	int x, y; /* position on the screen */
+	int w,h; // ball width and height
+	int dx, dy; /* movement vector */
+} ball_t;
+
+typedef struct paddle {
+
+	int x,y;
+	int w,h;
+} paddle_t;
+
+//asset instances
+static ball_t ball;
+static paddle_t paddle[2];
+int score[] = {0,0};
+
+//surfaces
+static SDL_Surface *screen;
+static SDL_Surface *numbermap;
+static SDL_Surface *title;
+static SDL_Surface *end;
+
+
 
 
 void catch_signal(int sig) {}
@@ -58,6 +94,9 @@ void simulate_load(RTIME load_ns) {
 * Task body implementation
 */
 void task_cinematica_code(void *task_period_ns) {
+	
+
+	/*
 	RT_TASK *curtask;
 	RT_TASK_INFO curtaskinfo;
 	int *task_period;
@@ -66,13 +105,13 @@ void task_cinematica_code(void *task_period_ns) {
 	unsigned long overruns;
 	int err;
 
-	/* Get task information */
+	//Get task information 
 	curtask=rt_task_self();
 	rt_task_inquire(curtask,&curtaskinfo);
 	rt_printf("%s init\n", curtaskinfo.name);
 	task_period=(int *)task_period_ns;
 
-	/* Set task as periodic */
+	//Set task as periodic 
 	err=rt_task_set_periodic(NULL, TM_NOW, *task_period);
 	for(;;) {
 		err=rt_task_wait_period(&overruns);
@@ -87,37 +126,15 @@ void task_cinematica_code(void *task_period_ns) {
 			rt_printf("Measured period (ns)= %lu\n",ta-to);
 		to=ta;
 
-		/* Task "load" */
+		// Task "load"
 		simulate_load(TASK_LOAD_NS);
 	}
 	return;
+	*/ 
 }
 
 
 
-typedef struct ball_s {
-
-	int x, y; /* position on the screen */
-	int w,h; // ball width and height
-	int dx, dy; /* movement vector */
-} ball_t;
-
-typedef struct paddle {
-
-	int x,y;
-	int w,h;
-} paddle_t;
-
-//asset instances
-static ball_t ball;
-static paddle_t paddle[2];
-int score[] = {0,0};
-
-//surfaces
-static SDL_Surface *screen;
-static SDL_Surface *numbermap;
-static SDL_Surface *title;
-static SDL_Surface *end;
 
 //inisilise starting position and sizes of game elemements
 static void init_ball() {
@@ -388,29 +405,20 @@ static void move_paddle_ai() {
 }
 
 static void move_paddle(int d) {
-
 	// if the down arrow is pressed move paddle down
 	if (d == 0) {
-		
 		if(paddle[1].y >= screen->h - paddle[1].h) {
-		
 			paddle[1].y = screen->h - paddle[1].h;
-		
 		} else { 
-		
 			paddle[1].y += 5;
 		}
 	}
 	
 	// if the up arrow is pressed move paddle up
 	if (d == 1) {
-
 		if(paddle[1].y <= 0) {
-		
 			paddle[1].y = 0;
-
 		} else {
-		
 			paddle[1].y -= 5;
 		}
 	}
@@ -603,32 +611,45 @@ static void draw_player_1_score() {
 	SDL_BlitSurface(numbermap, &src, screen, &dest);
 }
 
-int main() {
+
+void init_xenomai() {
+  /* Avoids memory swapping for this program */
+  mlockall(MCL_CURRENT|MCL_FUTURE);
+
+  /* Perform auto-init of rt_print buffers if the task doesn't do so */
+  rt_print_auto_init(1);
+}
+
+
+void startup(){
+	int err; 
+	int task_cinematica_period_ns=TASK_CINEMATICA_PERIOD_NS; 
+
+  	rt_pipe_create (&mypipe, "mypipe", 0, PIPE_SIZE);
 	
-	int err, 
-	task_cinematica_period_ns=TASK_CINEMATICA_PERIOD_NS; 
-
-	rt_print_auto_init(1);
-
-	/* Lock memory to prevent paging */
-	mlockall(MCL_CURRENT|MCL_FUTURE);
-
-
-	err=rt_task_create(&task_cinematica_desc, "Task a", TASK_STKSZ, TASK_CINEMATICA_PRIO, TASK_MODE);
+	err=rt_task_create(&task_cinematica_desc, "Task cinematica", TASK_STKSZ, TASK_CINEMATICA_PRIO, TASK_MODE);
 	if(err) {
-		rt_printf("Error creating task a (error code = %d)\n",err);
-		return err;
+		rt_printf("Error creating task cinematica (error code = %d)\n",err);
 	} else 
-		rt_printf("Task a created successfully\n");
-
+		rt_printf("Task cinematica created successfully\n");
 
 	rt_task_start(&task_cinematica_desc, &task_cinematica_code, (void *)&task_cinematica_period_ns);
+
+}
+
+
+
+int main() {
+
+	init_xenomai(); 
+
+	startup(); 
+	
 
 	SDL_Surface *temp;
 
 	/* Initialize SDL’s video system and check for errors */
 	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-
 		printf("Unable to initialize SDL: %s\n", SDL_GetError());
 		return 1;
 	}
@@ -638,18 +659,14 @@ int main() {
 	
 	/* Attempt to set a 640x480 8 bit color video mode */
 	screen = SDL_SetVideoMode(640, 480, 8,SDL_DOUBLEBUF);
-	
 	if (screen == NULL) {
-		
 		printf("Unable to set video mode: %s\n", SDL_GetError());
 		return 1;
 	}
 
 	//load the numbermap image strip of 10 number 64px * 64px
 	temp = SDL_LoadBMP("numbermap.bmp");
-	
 	if (temp == NULL) {
-	
 		printf("Unable to load numbermap.bmp.\n");
 		return 1;
 	}
@@ -662,7 +679,6 @@ int main() {
 	numbermap = SDL_DisplayFormat(temp);
 	
 	if (numbermap == NULL) {
-	
 		printf("Unable to convert bitmap.\n");
 		return 1;
 	}
@@ -671,9 +687,7 @@ int main() {
 	
 	//load the numbermap image strip of 10 number 64px * 64px
 	temp = SDL_LoadBMP("title.bmp");
-
 	if (temp == NULL) {
-	
 		printf("Unable to load numbermap.bmp.\n");
 		return 1;
 	}
@@ -683,9 +697,7 @@ int main() {
 	
 	//convert the numbermaps surface to the same type as the screen
 	title = SDL_DisplayFormat(temp);
-	
 	if (numbermap == NULL) {
-	
 		printf("Unable to convert bitmap.\n");
 		return 1;
 	}
@@ -694,18 +706,14 @@ int main() {
 
 	//load the numbermap image strip of 10 number 64px * 64px
 	temp = SDL_LoadBMP("gameover.bmp");
-
 	if (temp == NULL) {
-	
 		printf("Unable to load gameover.bmp.\n");
 		return 1;
 	}
 
 	//convert the end surface to the same type as the screen
 	end = SDL_DisplayFormat(temp);
-	
 	if (end == NULL) {
-	
 		printf("Unable to convert bitmap.\n");
 		return 1;
 	}

@@ -21,3 +21,8 @@ campo -> x, y
 
 
 tarefa input barra
+
+
+exemplos xenomai: http://www.cs.ru.nl/lab/xenomai/exercises
+https://github.com/yunusdawji/xenomai-examples
+
