@@ -20,7 +20,7 @@
 #define TASK_MODE 0   // No flags
 #define TASK_STKSZ 0  // Default stack size
 
-#define TASK_CINEMATICA_PRIO 99  // RT priority [0..99]
+#define TASK_CINEMATICA_PRIO 50  // RT priority [0..99]
 #define TASK_CINEMATICA_PERIOD_NS 1000000000 // Task period, in ns
 
 #define TASK_B_PRIO 90  // priority
@@ -33,7 +33,6 @@ RT_TASK task_b_desc; // Task decriptor
 
 #define PIPE_SIZE 255
 RT_PIPE mypipe;
-
 
 
 typedef struct ball_s {
@@ -59,8 +58,6 @@ static SDL_Surface *screen;
 static SDL_Surface *numbermap;
 static SDL_Surface *title;
 static SDL_Surface *end;
-
-
 
 
 void catch_signal(int sig) {}
@@ -89,49 +86,6 @@ void simulate_load(RTIME load_ns) {
 	return;
 }
 
-
-/*
-* Task body implementation
-*/
-void task_cinematica_code(void *task_period_ns) {
-	
-
-	/*
-	RT_TASK *curtask;
-	RT_TASK_INFO curtaskinfo;
-	int *task_period;
-
-	RTIME to=0,ta=0;
-	unsigned long overruns;
-	int err;
-
-	//Get task information 
-	curtask=rt_task_self();
-	rt_task_inquire(curtask,&curtaskinfo);
-	rt_printf("%s init\n", curtaskinfo.name);
-	task_period=(int *)task_period_ns;
-
-	//Set task as periodic 
-	err=rt_task_set_periodic(NULL, TM_NOW, *task_period);
-	for(;;) {
-		err=rt_task_wait_period(&overruns);
-		ta=rt_timer_read();
-		if(err) {
-			rt_printf("%s overrun!!!\n", curtaskinfo.name);
-			break;
-		}
-		rt_printf("%s activation\n", curtaskinfo.name);
-		
-		if(to!=0) 
-			rt_printf("Measured period (ns)= %lu\n",ta-to);
-		to=ta;
-
-		// Task "load"
-		simulate_load(TASK_LOAD_NS);
-	}
-	return;
-	*/ 
-}
 
 
 
@@ -233,7 +187,11 @@ static void move_ball() {
 	ball.x += ball.dx;
 	ball.y += ball.dy;
 	
+
+	
 	/* Turn the ball around if it hits the edge of the screen. */
+	/*
+	
 	if (ball.x < 0) {
 		
 		score[1] += 1;
@@ -253,6 +211,7 @@ static void move_ball() {
 
 	//check for collision with the paddle
 	int i;
+
 
 	for (i = 0; i < 2; i++) {
 		
@@ -334,6 +293,7 @@ static void move_ball() {
 			}
 		}
 	}
+	*/
 }
 
 static void move_paddle_ai() {
@@ -612,13 +572,188 @@ static void draw_player_1_score() {
 }
 
 
-void init_xenomai() {
-  /* Avoids memory swapping for this program */
-  mlockall(MCL_CURRENT|MCL_FUTURE);
 
-  /* Perform auto-init of rt_print buffers if the task doesn't do so */
-  rt_print_auto_init(1);
+#define NTASKS 2
+
+#define QUEUE_SIZE 255
+#define MAX_MESSAGE_LENGTH 40
+
+RT_TASK task_struct[NTASKS];
+
+#define PIPE_SIZE 255
+
+
+
+/*
+* Task body implementation
+*/
+void task_cinematica_code(void *task_period_ns) {
+
+
+
+
+
+/*	
+	RT_TASK *curtask;
+	RT_TASK_INFO curtaskinfo;
+	int *task_period;
+
+	RTIME to=0,ta=0;
+	unsigned long overruns;
+	int err;
+
+	//Get task information 
+	curtask=rt_task_self();
+	rt_task_inquire(curtask,&curtaskinfo);
+	rt_printf("%s init\n", curtaskinfo.name);
+	task_period=(int *)task_period_ns;
+*/
+
+
+
+	//Set task as periodic 
+	//err=rt_task_set_periodic(NULL, TM_NOW, *task_period);
+	
+
+	/*
+	for(;;) {
+		printf("x: %d - dx: %d \n", ball.x, ball.dx);
+		printf("y: %d - dy: %d \n", ball.y, ball.dy);
+
+
+		err=rt_task_wait_period(&overruns);
+		ta=rt_timer_read();
+		if(err) {
+			rt_printf("%s overrun!!!\n", curtaskinfo.name);
+			break;
+		}
+		rt_printf("%s activation\n", ball.x);
+		
+		if(to!=0) 
+			rt_printf("Measured period (ns)= %lu\n",ta-to);
+		to=ta;
+
+		// Task "load"
+		simulate_load(TASK_LOAD_NS);
+		
+	}
+	*/
+
+	return;
+	 
+
 }
+
+
+
+void init_xenomai() {
+	/* Avoids memory swapping for this program */
+	mlockall(MCL_CURRENT|MCL_FUTURE);
+
+	/* Perform auto-init of rt_print buffers if the task doesn't do so */
+	rt_print_auto_init(1);
+}
+
+
+
+void taskOne(void *arg)
+{
+    int retval;
+    char msgBuf[MAX_MESSAGE_LENGTH];
+    char message[] = "Message from taskOne";
+
+    //task message blocks
+    RT_TASK_MCB mymcb, talk_reply;
+
+    // this is to debug which task started first
+    rt_printf("Entered Task one\n");
+	
+
+
+
+	char str[15];
+	sprintf(str, "%d", ball.x);
+
+
+
+    mymcb.data = str;
+    mymcb.size = sizeof(str);
+
+    talk_reply.size = 0;
+    talk_reply.data = NULL;
+
+    retval = rt_task_send(&task_struct[1], &mymcb, &talk_reply, TM_NONBLOCK);
+    if (retval == -EWOULDBLOCK ) {
+       rt_printf("Would block error: %d\n", retval);
+    } 
+    else if(retval == -ETIMEDOUT){
+	rt_printf("Timedout error: %d\n", retval);
+    }
+    else if(retval == -ENOBUFS){
+	rt_printf("unblocked called error: %d\n", retval);
+    }
+    else if(retval == -EIDRM){
+	rt_printf("sleep error: %d\n", retval);
+    }
+    else if(retval == -ESRCH){
+    	rt_printf("Buffer error: %d\n", retval);
+    }  
+    else {
+       rt_printf("taskOne sent message to mailbox\n");
+    }
+
+
+
+}
+
+void taskTwo(void *arg)
+{
+    int retval;
+    char msgBuf[MAX_MESSAGE_LENGTH];
+    char message[] = "Message from taskTwo";
+    RT_TASK_MCB mymcb, listen_reply;
+  
+
+    mymcb.data = (caddr_t)msgBuf;
+    mymcb.size= sizeof(msgBuf);\
+
+    // this is for debug
+    rt_printf("Entered Task two\n");
+
+    /* receive message */
+    retval = rt_task_receive(&mymcb,TM_INFINITE); 	
+
+    //error checks
+    if (retval == -EWOULDBLOCK ) {
+       rt_printf("Would block error: %d\n", retval);
+    } 
+    else if(retval == -ETIMEDOUT){
+	rt_printf("Timedout error: %d\n", retval);
+    }
+    else if(retval == -ENOBUFS){
+	rt_printf("unblocked called error: %d\n", retval);
+    }
+    else if(retval == -EIDRM){
+	rt_printf("sleep error: %d\n", retval);
+    }
+    else if(retval == -ESRCH){
+    	rt_printf("Buffer error: %d\n", retval);
+    }    
+    else if (retval < 0 ) {
+          rt_printf("Receiving error\n");
+    } else {
+        rt_printf("taskTwo received message: %s\n",mymcb.data);
+        rt_printf("with length %d\n",retval);
+    }
+
+    listen_reply.size = 0;
+    listen_reply.data = NULL;
+    rt_task_reply(retval, &listen_reply);
+
+ 	
+
+}
+
 
 
 void startup(){
@@ -628,12 +763,43 @@ void startup(){
   	rt_pipe_create (&mypipe, "mypipe", 0, PIPE_SIZE);
 	
 	err=rt_task_create(&task_cinematica_desc, "Task cinematica", TASK_STKSZ, TASK_CINEMATICA_PRIO, TASK_MODE);
+	
 	if(err) {
 		rt_printf("Error creating task cinematica (error code = %d)\n",err);
 	} else 
 		rt_printf("Task cinematica created successfully\n");
 
 	rt_task_start(&task_cinematica_desc, &task_cinematica_code, (void *)&task_cinematica_period_ns);
+
+
+
+
+	int i;
+  char  str[10] ;
+
+  void (*task_func[NTASKS]) (void *arg);
+  task_func[0]=taskOne;
+  task_func[1]=taskTwo;
+
+  rt_pipe_create (&mypipe, "mypipe", 0, PIPE_SIZE);
+	
+  rt_timer_set_mode(0); // set timer to tick in nanoseconds and not in jiffies
+  for(i=0; i < NTASKS; i++) {
+    rt_printf("create task  : %d\n",i);
+    sprintf(str,"task%d",i);
+    rt_task_create(&task_struct[i], str, 0, 50, 0);
+  }
+
+  for(i=1; i > -1 ; i--) {
+    rt_printf("start task  : %d\n",i);
+    sprintf(str,"task%d",i);
+    rt_task_start(&task_struct[i], task_func[i], &i);
+  }	  
+
+
+
+
+
 
 }
 
@@ -805,7 +971,7 @@ int main() {
 			move_paddle_ai();
 
 			/* Move the balls for the next frame. */
-			move_ball();
+			//move_ball();
 			
 			//draw net
 			draw_net();
