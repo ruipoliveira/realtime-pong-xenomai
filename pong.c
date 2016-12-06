@@ -20,9 +20,13 @@
 #define TASK_CINEMATICA_PRIO 99  // RT priority [0..99]
 #define TASK_CINEMATICA_PERIOD_NS 100000000 // Task period, in ns
 
+#define TASK_MOVE_PADDLE_PRIO 99  // RT priority [0..99]
+#define TASK_MOVE_PADDLE_PERIOD_NS 100000000 // Task period, in ns
+
 #define TASK_LOAD_NS      10000000 // Task execution time, in ns (same to all tasks)
 
 RT_TASK task_cinematica_desc; // Task decriptor
+RT_TASK task_move_paddle_desc; // Task decriptor
 
 
 typedef struct ball_s {
@@ -578,12 +582,13 @@ void task_cinematica_code(void *task_period_ns) {
 
 
 /*
-* Task cinematica aka DEUS implementation
+* Task mode paddle implementation
 */
 void task_move_paddle_code(void *task_period_ns) {
 	RT_TASK *curtask;
 	RT_TASK_INFO curtaskinfo;
 	int *task_period;
+	Uint8 *keystate = 0;
 
 	RTIME to=0,ta=0;
 	unsigned long overruns;
@@ -595,6 +600,9 @@ void task_move_paddle_code(void *task_period_ns) {
 	rt_printf("%s init\n", curtaskinfo.name);
 	task_period=(int *)task_period_ns;
 	
+
+	keystate = SDL_GetKeyState(NULL);
+
 	/* Set task as periodic */
 	err=rt_task_set_periodic(NULL, TM_NOW, *task_period);
 	for(;;) {
@@ -605,10 +613,24 @@ void task_move_paddle_code(void *task_period_ns) {
 			break;
 		}
 
-		rt_printf("x=%d y=%d \n", ball.x, ball.y);
+		if (keystate[SDLK_DOWN]){
+			rt_printf("pressed down!!!\n");
+			if(paddle[1].y >= screen->h - paddle[1].h)
+				paddle[1].y = screen->h - paddle[1].h;
+			else
+				paddle[1].y += 5;
+		}
 
+		if (keystate[SDLK_UP]) {
+			rt_printf("pressed up!!!\n");
+			if(paddle[1].y <= 0)
+				paddle[1].y = 0;
+			else
+				paddle[1].y -= 5;
+		}
 
 		simulate_load(TASK_LOAD_NS);
+
 	}
 	return;
 }
@@ -626,8 +648,10 @@ void init_xenomai() {
 
 void startup(){
 	int err; 
-	int task_cinematica_period_ns=TASK_CINEMATICA_PERIOD_NS; 
 	
+	int task_cinematica_period_ns=TASK_CINEMATICA_PERIOD_NS; 
+	int task_move_paddle_period_ns=TASK_MOVE_PADDLE_PERIOD_NS; 
+
 	err=rt_task_create(&task_cinematica_desc, "Task cinematica", TASK_STKSZ, TASK_CINEMATICA_PRIO, TASK_MODE);
 	
 	if(err) {
@@ -635,8 +659,16 @@ void startup(){
 	} else 
 		rt_printf("Task cinematica created successfully\n");
 
-	rt_task_start(&task_cinematica_desc, &task_cinematica_code, (void *)&task_cinematica_period_ns);
 
+	err=rt_task_create(&task_move_paddle_desc, "Task move paddle", TASK_STKSZ, TASK_MOVE_PADDLE_PRIO, TASK_MODE);
+	
+	if(err) {
+		rt_printf("Error creating task  move paddle (error code = %d)\n",err);
+	} else 
+		rt_printf("Task move paddle created successfully\n");
+
+	rt_task_start(&task_cinematica_desc, &task_cinematica_code, (void *)&task_cinematica_period_ns);
+	rt_task_start(&task_move_paddle_desc, &task_move_paddle_code, (void *)&task_move_paddle_period_ns);
 
 }
 
@@ -745,14 +777,7 @@ int main() {
 			quit = 1;
 		}
 		
-		if (keystate[SDLK_DOWN]) {
-			move_paddle(0);
-		}
 
-		if (keystate[SDLK_UP]) {
-			move_paddle(1);
-		}
-		
 		//draw the background
 		draw_background();
 
@@ -805,9 +830,6 @@ int main() {
 			//paddle ai movement
 			move_paddle_ai();
 
-			/* Move the balls for the next frame. */
-			//move_ball();
-			
 			//draw net
 			draw_net();
 
