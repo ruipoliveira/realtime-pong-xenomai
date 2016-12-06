@@ -172,18 +172,7 @@ int check_collision(ball_t a, paddle_t b) {
 	return 1;
 }
 
-/* This routine moves each ball by its motion vector. */
-static void move_ball() {
-	
-	/* Move the ball by its motion vector. */
-	ball.x += ball.dx;
-	ball.y += ball.dy;
-	
 
-	
-	/* Turn the ball around if it hits the edge of the screen. */
-
-}
 
 static void move_paddle_ai() {
 
@@ -253,25 +242,7 @@ static void move_paddle_ai() {
 	}
 }
 
-static void move_paddle(int d) {
-	// if the down arrow is pressed move paddle down
-	if (d == 0) {
-		if(paddle[1].y >= screen->h - paddle[1].h) {
-			paddle[1].y = screen->h - paddle[1].h;
-		} else { 
-			paddle[1].y += 5;
-		}
-	}
-	
-	// if the up arrow is pressed move paddle up
-	if (d == 1) {
-		if(paddle[1].y <= 0) {
-			paddle[1].y = 0;
-		} else {
-			paddle[1].y -= 5;
-		}
-	}
-}
+
 
 static void draw_game_over(int p) { 
 
@@ -629,6 +600,23 @@ void task_move_paddle_code(void *task_period_ns) {
 				paddle[1].y -= 5;
 		}
 
+
+		if (keystate[SDLK_s]){
+			rt_printf("pressed down!!!\n");
+			if(paddle[0].y >= screen->h - paddle[0].h)
+				paddle[0].y = screen->h - paddle[0].h;
+			else
+				paddle[0].y += 5;
+		}
+
+		if (keystate[SDLK_w]) {
+			rt_printf("pressed up!!!\n");
+			if(paddle[0].y <= 0)
+				paddle[0].y = 0;
+			else
+				paddle[0].y -= 5;
+		}
+
 		simulate_load(TASK_LOAD_NS);
 
 	}
@@ -828,7 +816,7 @@ int main() {
 			}
 
 			//paddle ai movement
-			move_paddle_ai();
+			//move_paddle_ai();
 
 			//draw net
 			draw_net();
