@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include "SDL/SDL.h"
+#include <string.h>
 
 #include <sys/types.h>
 #include <fcntl.h>
@@ -23,10 +24,15 @@
 #define TASK_MOVE_PADDLE_PRIO 99  // RT priority [0..99]
 #define TASK_MOVE_PADDLE_PERIOD_NS 100000000 // Task period, in ns
 
+#define TASK_MOVE_PADDLE_AI_PRIO 99  // RT priority [0..99]
+#define TASK_MOVE_PADDLE_AI_PERIOD_NS 100000000 // Task period, in ns
+
+
 #define TASK_LOAD_NS      10000000 // Task execution time, in ns (same to all tasks)
 
 RT_TASK task_cinematica_desc; // Task decriptor
 RT_TASK task_move_paddle_desc; // Task decriptor
+RT_TASK task_move_paddle_ai_desc; // Task decriptor
 
 
 typedef struct ball_s {
@@ -51,6 +57,7 @@ static SDL_Surface *numbermap;
 static SDL_Surface *title;
 static SDL_Surface *end;
 
+int withComputer = 0; 
 
 void catch_signal(int sig) {}
 
@@ -77,8 +84,6 @@ void simulate_load(RTIME load_ns) {
 
 	return;
 }
-
-
 
 
 
@@ -173,74 +178,6 @@ int check_collision(ball_t a, paddle_t b) {
 }
 
 
-
-static void move_paddle_ai() {
-
-	int center = paddle[0].y + 25;
-	int screen_center = screen->h / 2 - 25;
-	int ball_speed = ball.dy;
-
-	if (ball_speed < 0) {
-	
-		ball_speed = -ball_speed;
-	}
-
-	//ball moving right
-	if (ball.dx > 0) {
-		
-		//return to center position
-		if (center < screen_center) {
-			
-			paddle[0].y += ball_speed;
-		
-		} else {
-		
-			paddle[0].y -= ball_speed;	
-		}
-
-	//ball moving left
-	} else {
-	
-		//ball moving down
-		if (ball.dy > 0) { 
-			
-			if (ball.y > center) { 
-				
-				paddle[0].y += ball_speed;
-
-			} else { 
-			
-				paddle[0].y -= ball_speed;
-			}
-		}
-		
-		//ball moving up
-		if (ball.dy < 0) {
-		
-			if (ball.y < center) { 
-				
-				paddle[0].y -= ball_speed;
-			
-			} else {
-			
-				paddle[0].y += ball_speed;
-			}
-		}
-
-		//ball moving stright across
-		if (ball.dy == 0) {
-			
-			if (ball.y < center) { 
-			
-				paddle[0].y -= 5;
-
-			} else {
-			
-				paddle[0].y += 5;
-			}
-		}	 		
-	}
-}
 
 
 
@@ -600,21 +537,23 @@ void task_move_paddle_code(void *task_period_ns) {
 				paddle[1].y -= 5;
 		}
 
+		if (!withComputer){
+			if (keystate[SDLK_s]){
+				rt_printf("pressed down!!!\n");
+				if(paddle[0].y >= screen->h - paddle[0].h)
+					paddle[0].y = screen->h - paddle[0].h;
+				else
+					paddle[0].y += 5;
+			}
 
-		if (keystate[SDLK_s]){
-			rt_printf("pressed down!!!\n");
-			if(paddle[0].y >= screen->h - paddle[0].h)
-				paddle[0].y = screen->h - paddle[0].h;
-			else
-				paddle[0].y += 5;
-		}
+			if (keystate[SDLK_w]) {
+				rt_printf("pressed up!!!\n");
+				if(paddle[0].y <= 0)
+					paddle[0].y = 0;
+				else
+					paddle[0].y -= 5;
+			}
 
-		if (keystate[SDLK_w]) {
-			rt_printf("pressed up!!!\n");
-			if(paddle[0].y <= 0)
-				paddle[0].y = 0;
-			else
-				paddle[0].y -= 5;
 		}
 
 		simulate_load(TASK_LOAD_NS);
@@ -622,6 +561,114 @@ void task_move_paddle_code(void *task_period_ns) {
 	}
 	return;
 }
+
+/*
+* Task mode paddle implementation
+*/
+void task_move_paddle_ai_code(void *task_period_ns) {
+	RT_TASK *curtask;
+	RT_TASK_INFO curtaskinfo;
+	int *task_period;
+	Uint8 *keystate = 0;
+
+	RTIME to=0,ta=0;
+	unsigned long overruns;
+	int err;
+	
+	/* Get task information */
+	curtask=rt_task_self();
+	rt_task_inquire(curtask,&curtaskinfo);
+	rt_printf("%s init\n", curtaskinfo.name);
+	task_period=(int *)task_period_ns;
+	
+
+	keystate = SDL_GetKeyState(NULL);
+
+	/* Set task as periodic */
+	err=rt_task_set_periodic(NULL, TM_NOW, *task_period);
+	for(;;) {
+		err=rt_task_wait_period(&overruns);
+		ta=rt_timer_read();
+		if(err) {
+			rt_printf("%s overrun!!!\n", curtaskinfo.name);
+			break;
+		}
+
+
+int center = paddle[0].y + 25;
+	int screen_center = screen->h / 2 - 25;
+	int ball_speed = ball.dy;
+
+	if (ball_speed < 0) {
+	
+		ball_speed = -ball_speed;
+	}
+
+	//ball moving right
+	if (ball.dx > 0) {
+		
+		//return to center position
+		if (center < screen_center) {
+			
+			paddle[0].y += ball_speed;
+		
+		} else {
+		
+			paddle[0].y -= ball_speed;	
+		}
+
+	//ball moving left
+	} else {
+	
+		//ball moving down
+		if (ball.dy > 0) { 
+			
+			if (ball.y > center) { 
+				
+				paddle[0].y += ball_speed;
+
+			} else { 
+			
+				paddle[0].y -= ball_speed;
+			}
+		}
+		
+		//ball moving up
+		if (ball.dy < 0) {
+		
+			if (ball.y < center) { 
+				
+				paddle[0].y -= ball_speed;
+			
+			} else {
+			
+				paddle[0].y += ball_speed;
+			}
+		}
+
+		//ball moving stright across
+		if (ball.dy == 0) {
+			
+			if (ball.y < center) { 
+			
+				paddle[0].y -= 5;
+
+			} else {
+			
+				paddle[0].y += 5;
+			}
+		}	 		
+	}
+
+
+
+		simulate_load(TASK_LOAD_NS);
+
+	}
+	return;
+}
+
+
 
 
 
@@ -639,6 +686,8 @@ void startup(){
 	
 	int task_cinematica_period_ns=TASK_CINEMATICA_PERIOD_NS; 
 	int task_move_paddle_period_ns=TASK_MOVE_PADDLE_PERIOD_NS; 
+	int task_move_paddle_ai_period_ns=TASK_MOVE_PADDLE_AI_PERIOD_NS; 
+
 
 	err=rt_task_create(&task_cinematica_desc, "Task cinematica", TASK_STKSZ, TASK_CINEMATICA_PRIO, TASK_MODE);
 	
@@ -646,6 +695,8 @@ void startup(){
 		rt_printf("Error creating task cinematica (error code = %d)\n",err);
 	} else 
 		rt_printf("Task cinematica created successfully\n");
+
+	rt_task_start(&task_cinematica_desc, &task_cinematica_code, (void *)&task_cinematica_period_ns);
 
 
 	err=rt_task_create(&task_move_paddle_desc, "Task move paddle", TASK_STKSZ, TASK_MOVE_PADDLE_PRIO, TASK_MODE);
@@ -655,13 +706,34 @@ void startup(){
 	} else 
 		rt_printf("Task move paddle created successfully\n");
 
-	rt_task_start(&task_cinematica_desc, &task_cinematica_code, (void *)&task_cinematica_period_ns);
 	rt_task_start(&task_move_paddle_desc, &task_move_paddle_code, (void *)&task_move_paddle_period_ns);
+
+
+	if (withComputer == 1){	
+		err=rt_task_create(&task_move_paddle_ai_desc, "Task move paddle ai", TASK_STKSZ, TASK_MOVE_PADDLE_AI_PRIO, TASK_MODE);
+	
+		if(err) {
+			rt_printf("Error creating task  move paddle ai (error code = %d)\n",err);
+		} else 
+			rt_printf("Task move paddle created ai successfully\n");
+
+		rt_task_start(&task_move_paddle_ai_desc, &task_move_paddle_ai_code, (void *)&task_move_paddle_ai_period_ns);
+	}
 
 }
 
 
-int main() {
+int main(int argc, char **argv) {
+
+
+	if (argc != 3){
+		printf("Usage: ./pong [name_user1] [name_user2 OR 'computer'] \n");
+		return 0; 
+	}
+
+	if(strcmp(argv[2], "computer") == 0){
+		withComputer = 1; 
+	}
 
 	init_xenomai(); 
 
