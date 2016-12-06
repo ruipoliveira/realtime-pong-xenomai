@@ -2,6 +2,10 @@
 xenomai
 
 
+Usage: ./pong [name_user1] [name_user2 OR 'computer'] 
+
+
+
 
 resource interface SDL: https://github.com/flightcrank/pong
 
