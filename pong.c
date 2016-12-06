@@ -264,8 +264,8 @@ static void draw_net() {
 	
 	net.x = screen->w / 2;
 	net.y = 20;
-	net.w = 5;
-	net.h = 15;
+	net.w = 2;
+	net.h = 5;
 
 	//draw the net
 	int i,r;
