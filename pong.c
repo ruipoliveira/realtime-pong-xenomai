@@ -19,13 +19,13 @@
 #define TASK_STKSZ 0  // Default stack size
 
 #define TASK_CINEMATICA_PRIO 99  // RT priority [0..99]
-#define TASK_CINEMATICA_PERIOD_NS 100000000 // Task period, in ns
+#define TASK_CINEMATICA_PERIOD_NS 79000000 // Task period, in ns
 
 #define TASK_MOVE_PADDLE_PRIO 99  // RT priority [0..99]
-#define TASK_MOVE_PADDLE_PERIOD_NS 100000000 // Task period, in ns
+#define TASK_MOVE_PADDLE_PERIOD_NS 79000000 // Task period, in ns
 
 #define TASK_MOVE_PADDLE_AI_PRIO 99  // RT priority [0..99]
-#define TASK_MOVE_PADDLE_AI_PERIOD_NS 100000000 // Task period, in ns
+#define TASK_MOVE_PADDLE_AI_PERIOD_NS 79000000 // Task period, in ns     --->100000000
 
 
 #define TASK_LOAD_NS      10000000 // Task execution time, in ns (same to all tasks)
@@ -94,8 +94,8 @@ static void init_ball() {
 	ball.y = screen->h / 2;
 	ball.w = 10;
 	ball.h = 10;
-	ball.dy = 1;
-	ball.dx = 1;
+	ball.dy = 5;
+	ball.dx = 5;
 	
 	paddle[0].x = 20;
 	paddle[0].y = screen->h / 2 - 50 ;
@@ -526,7 +526,7 @@ void task_move_paddle_code(void *task_period_ns) {
 			if(paddle[1].y >= screen->h - paddle[1].h)
 				paddle[1].y = screen->h - paddle[1].h;
 			else
-				paddle[1].y += 5;
+				paddle[1].y += 10;
 		}
 
 		if (keystate[SDLK_UP]) {
@@ -534,7 +534,7 @@ void task_move_paddle_code(void *task_period_ns) {
 			if(paddle[1].y <= 0)
 				paddle[1].y = 0;
 			else
-				paddle[1].y -= 5;
+				paddle[1].y -= 10;
 		}
 
 		if (!withComputer){
@@ -543,7 +543,7 @@ void task_move_paddle_code(void *task_period_ns) {
 				if(paddle[0].y >= screen->h - paddle[0].h)
 					paddle[0].y = screen->h - paddle[0].h;
 				else
-					paddle[0].y += 5;
+					paddle[0].y += 10;
 			}
 
 			if (keystate[SDLK_w]) {
@@ -551,7 +551,7 @@ void task_move_paddle_code(void *task_period_ns) {
 				if(paddle[0].y <= 0)
 					paddle[0].y = 0;
 				else
-					paddle[0].y -= 5;
+					paddle[0].y -= 10;
 			}
 
 		}
@@ -651,11 +651,11 @@ int center = paddle[0].y + 25;
 			
 			if (ball.y < center) { 
 			
-				paddle[0].y -= 5;
+				paddle[0].y -= 10;
 
 			} else {
 			
-				paddle[0].y += 5;
+				paddle[0].y += 10;
 			}
 		}	 		
 	}
