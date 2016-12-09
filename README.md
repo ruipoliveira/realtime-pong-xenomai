@@ -1,8 +1,17 @@
 # realtime-pong
-xenomai
 
 
-Usage: ./pong [name_user1] [name_user2 OR 'computer'] 
+## Requirements 
+
+### Xenomai
+
+### SDL interface
+sudo apt-get install libsdl1.2-dev
+
+## Execution
+
+make
+./pong [name_user1] [name_user2 OR 'computer'] 
 
 
 
