@@ -27,13 +27,12 @@
 #define TASK_MOVE_PADDLE_AI_PRIO 99  // RT priority [0..99]
 #define TASK_MOVE_PADDLE_AI_PERIOD_NS 79000000 // Task period, in ns     --->100000000
 
-
 #define TASK_LOAD_NS      10000000 // Task execution time, in ns (same to all tasks)
+
 
 RT_TASK task_cinematica_desc; // Task decriptor
 RT_TASK task_move_paddle_desc; // Task decriptor
 RT_TASK task_move_paddle_ai_desc; // Task decriptor
-
 
 typedef struct ball_s {
 	int x, y; /* position on the screen */
@@ -41,10 +40,12 @@ typedef struct ball_s {
 	int dx, dy; /* movement vector */
 } ball_t;
 
+
 typedef struct paddle {
 	int x,y;
 	int w,h;
 } paddle_t;
+
 
 //asset instances
 static ball_t ball;
@@ -54,23 +55,13 @@ int score[] = {0,0};
 //surfaces
 static SDL_Surface *screen;
 static SDL_Surface *numbermap;
-static SDL_Surface *title;
 static SDL_Surface *end;
 
 int withComputer = 0; 
 
 void catch_signal(int sig) {}
 
-void wait_for_ctrl_c(void) {
-	signal(SIGTERM, catch_signal); //catch_signal is called if SIGTERM received
-	signal(SIGINT, catch_signal);  //catch_signal is called if SIGINT received
 
-	// Wait for CTRL+C or sigterm
-	pause();
-
-	// Will terminate
-	rt_printf("Terminating ...\n");
-}
 
 /*
 * Simulates the computational load of tasks
@@ -111,30 +102,21 @@ static void init_ball() {
 int check_score() {
 	
 	int i;
-
 	//loop through player scores
 	for(i = 0; i < 2; i++) {
-	
 		//check if score is @ the score win limit
-		if (score[i] == 10 ) {
-		
-			//reset scores
+		if (score[i] == 10 ) { //reset scores
 			score[0] = 0;
 			score[1] = 0;
 			
-			//return 1 if player 1 score @ limit
-			if (i == 0) {
-
+			if (i == 0) { //return 1 if player 1 score @ limit
 				return 1;	
 
-			//return 2 if player 2 score is @ limit
-			} else {
-				
+			} else { //return 2 if player 2 score is @ limit
 				return 2;
 			}
 		}
 	}
-	
 	//return 0 if no one has reached a score of 10 yet
 	return 0;
 }
@@ -157,7 +139,6 @@ int check_collision(ball_t a, paddle_t b) {
 	top_b = b.y;
 	bottom_b = b.y + b.h;
 	
-
 	if (left_a > right_b) {
 		return 0;
 	}
@@ -176,8 +157,6 @@ int check_collision(ball_t a, paddle_t b) {
 
 	return 1;
 }
-
-
 
 
 
@@ -209,35 +188,15 @@ static void draw_game_over(int p) {
 	dest.h = 75;
 	
 	switch (p) {
-	
 		case 1:			
-			SDL_BlitSurface(end, &p1, screen, &dest);
-			break;
+			SDL_BlitSurface(end, &p1, screen, &dest); break;
 		case 2:
-			SDL_BlitSurface(end, &p2, screen, &dest);
-			break;
+			SDL_BlitSurface(end, &p2, screen, &dest); break;
 		default:
 			SDL_BlitSurface(end, &cpu, screen, &dest);
 	}
 }
 
-static void draw_menu() {
-
-	SDL_Rect src;
-	SDL_Rect dest;
-
-	src.x = 0;
-	src.y = 0;
-	src.w = title->w;
-	src.h = title->h;
-
-	dest.x = (screen->w / 2) - (title->w / 2);
-	dest.y = (screen->h / 2) - (title->h / 2);
-	dest.w = title->w;
-	dest.h = title->h;
-	
-	SDL_BlitSurface(title, &src, screen, &dest);
-}
 
 static void draw_background() {
  
@@ -253,7 +212,6 @@ static void draw_background() {
 	int r = SDL_FillRect(screen,&src,0);
 	
 	if (r !=0){
-		
 		printf("fill rectangle faliled in func draw_background()");
 	}
 }
@@ -271,14 +229,10 @@ static void draw_net() {
 	int i,r;
 
 	for(i = 0; i < 15; i++) {
-		
 		r = SDL_FillRect(screen,&net,255);
-	
-		if (r != 0) { 
-		
+		if (r != 0)
 			printf("fill rectangle faliled in func draw_background()");
-		}
-
+		
 		net.y = net.y + 30;
 	}
 
@@ -295,10 +249,8 @@ static void draw_ball() {
 
 	int r = SDL_FillRect(screen,&src,255);
 
-	if (r !=0){
-	
+	if (r !=0)
 		printf("fill rectangle faliled in func drawball()");
-	}
 }
 
 static void draw_paddle() {
@@ -367,7 +319,6 @@ static void draw_player_1_score() {
 
 	SDL_BlitSurface(numbermap, &src, screen, &dest);
 }
-
 
 /*
 * Task cinematica aka DEUS implementation
@@ -508,7 +459,6 @@ void task_move_paddle_code(void *task_period_ns) {
 	rt_printf("%s init\n", curtaskinfo.name);
 	task_period=(int *)task_period_ns;
 	
-
 	keystate = SDL_GetKeyState(NULL);
 
 	/* Set task as periodic */
@@ -594,13 +544,11 @@ void task_move_paddle_ai_code(void *task_period_ns) {
 			break;
 		}
 
-
-int center = paddle[0].y + 25;
+	int center = paddle[0].y + 25;
 	int screen_center = screen->h / 2 - 25;
 	int ball_speed = ball.dy;
 
 	if (ball_speed < 0) {
-	
 		ball_speed = -ball_speed;
 	}
 
@@ -609,26 +557,19 @@ int center = paddle[0].y + 25;
 		
 		//return to center position
 		if (center < screen_center) {
-			
 			paddle[0].y += ball_speed;
-		
 		} else {
-		
 			paddle[0].y -= ball_speed;	
 		}
-
 	//ball moving left
 	} else {
-	
 		//ball moving down
 		if (ball.dy > 0) { 
 			
 			if (ball.y > center) { 
-				
 				paddle[0].y += ball_speed;
 
 			} else { 
-			
 				paddle[0].y -= ball_speed;
 			}
 		}
@@ -637,11 +578,9 @@ int center = paddle[0].y + 25;
 		if (ball.dy < 0) {
 		
 			if (ball.y < center) { 
-				
 				paddle[0].y -= ball_speed;
 			
 			} else {
-			
 				paddle[0].y += ball_speed;
 			}
 		}
@@ -650,19 +589,14 @@ int center = paddle[0].y + 25;
 		if (ball.dy == 0) {
 			
 			if (ball.y < center) { 
-			
 				paddle[0].y -= 10;
-
 			} else {
-			
 				paddle[0].y += 10;
 			}
 		}	 		
 	}
 
-
-
-		simulate_load(TASK_LOAD_NS);
+	simulate_load(TASK_LOAD_NS);
 
 	}
 	return;
@@ -752,6 +686,9 @@ int main(int argc, char **argv) {
 	
 	/* Attempt to set a 640x480 8 bit color video mode */
 	screen = SDL_SetVideoMode(640, 480, 8,SDL_DOUBLEBUF);
+	SDL_WM_SetCaption("Pong Game - STR@2016", "Pong Game - STR@2016");
+
+
 	if (screen == NULL) {
 		printf("Unable to set video mode: %s\n", SDL_GetError());
 		return 1;
@@ -771,25 +708,6 @@ int main(int argc, char **argv) {
 	//convert the numbermaps surface to the same type as the screen
 	numbermap = SDL_DisplayFormat(temp);
 	
-	if (numbermap == NULL) {
-		printf("Unable to convert bitmap.\n");
-		return 1;
-	}
-
-	SDL_FreeSurface(temp);
-	
-	//load the numbermap image strip of 10 number 64px * 64px
-	temp = SDL_LoadBMP("title.bmp");
-	if (temp == NULL) {
-		printf("Unable to load numbermap.bmp.\n");
-		return 1;
-	}
-
-	/* Set the numbermaps colorkey. */
-	SDL_SetColorKey(temp, SDL_SRCCOLORKEY, colorkey);
-	
-	//convert the numbermaps surface to the same type as the screen
-	title = SDL_DisplayFormat(temp);
 	if (numbermap == NULL) {
 		printf("Unable to convert bitmap.\n");
 		return 1;
@@ -841,18 +759,7 @@ int main(int argc, char **argv) {
 		//draw the background
 		draw_background();
 
-		//display main menu
-		if (state == 0 ) {
-		
-			if (keystate[SDLK_SPACE]) {
-				state = 1;
-			}
-		
-			//draw menu 
-			draw_menu();
-		
-		//display gameover
-		} else if (state == 2) {
+		if (state == 2) {
 		
 			if (keystate[SDLK_SPACE]) {
 				state = 0;
@@ -873,7 +780,7 @@ int main(int argc, char **argv) {
 			}
 				
 		//display the game
-		} else if (state == 1){
+		} else {
 			
 			//check score
 			r = check_score();
@@ -886,9 +793,6 @@ int main(int argc, char **argv) {
 			
 				state = 2;	
 			}
-
-			//paddle ai movement
-			//move_paddle_ai();
 
 			//draw net
 			draw_net();
