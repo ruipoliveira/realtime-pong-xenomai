@@ -13,16 +13,15 @@
 * Install Mint 17 in VMWARE or VIRTUALBOX
 
 * Linux Mint 17 "Qiana" - KDE (32-bit) Version 32bits https://www.linuxmint.com/edition.php?id=167
+* Open a terminal
 
-``
-Open a terminal
+```
 sudo su
 cd /usr/src
 wget https://www.kernel.org/pub/linux/kernel/v3.x/linux-3.14.17.tar.gz
 wget https://xenomai.org/downloads/xenomai/stable/xenomai-2.6.4.tar.bz2 
+```
 
-
-``
 
 
 
