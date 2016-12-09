@@ -3,9 +3,9 @@
 
 ## Requirements 
 
-### Xenomai
+### Xenomai 2.6.4 + kernel linux 3.14.17 (or equivalent) 
 
-### SDL interface
+### SDL interface 1.2
 sudo apt-get install libsdl1.2-dev
 
 ## Execution
