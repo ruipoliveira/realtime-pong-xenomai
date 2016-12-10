@@ -58,6 +58,20 @@ make
 
 
 
+## Report and presentation
+* [report portuguese version (pdf)](https://github.com/ruipoliveira)
+
+
+## Authors
+
+* Adriano Oliveira ()
+* Rui Oliveira (ruipedrooliveira@ua.pt)
+
+
+
+
+
+
 
 resource interface SDL: https://github.com/flightcrank/pong
 
