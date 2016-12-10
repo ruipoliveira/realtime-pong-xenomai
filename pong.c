@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include "SDL/SDL.h"
+#include "SDL_draw.h"
 #include <string.h>
 
 #include <sys/types.h>
@@ -247,7 +248,8 @@ static void draw_ball() {
 	src.w = ball.w;
 	src.h = ball.h;
 
-	int r = SDL_FillRect(screen,&src,255);
+	//int r = SDL_FillRect(screen,&src,255);
+	int r = Draw_FillCircle(screen,ball.x,ball.y,ball.w/2,255);
 
 	if (r !=0)
 		printf("fill rectangle faliled in func drawball()");
