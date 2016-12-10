@@ -1,4 +1,4 @@
-# realtime-pong
+# Realtime Pong Xenomai
 
 
 ## Requirements 
