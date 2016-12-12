@@ -2,8 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
-#include "SDL/SDL.h"
-#include "SDL_draw.h"
+#include "SDL.h"
 #include <string.h>
 
 #include <sys/types.h>
@@ -12,7 +11,6 @@
 #include <sys/mman.h> // For mlockall
 #include <native/task.h>
 #include <native/timer.h>
-#include <native/pipe.h>
 
 #include  <rtdk.h> // Provides rt_print functions
 
@@ -20,15 +18,15 @@
 #define TASK_STKSZ 0  // Default stack size
 
 #define TASK_CINEMATICA_PRIO 99  // RT priority [0..99]
-#define TASK_CINEMATICA_PERIOD_NS 79000000 // Task period, in ns
+#define TASK_CINEMATICA_PERIOD_NS 100000000 // Task period, in ns
 
 #define TASK_MOVE_PADDLE_PRIO 99  // RT priority [0..99]
-#define TASK_MOVE_PADDLE_PERIOD_NS 79000000 // Task period, in ns
+#define TASK_MOVE_PADDLE_PERIOD_NS 90000000 // Task period, in ns
 
 #define TASK_MOVE_PADDLE_AI_PRIO 99  // RT priority [0..99]
 #define TASK_MOVE_PADDLE_AI_PERIOD_NS 79000000 // Task period, in ns     --->100000000
 
-#define TASK_LOAD_NS      10000000 // Task execution time, in ns (same to all tasks)
+#define TASK_LOAD_NS 10000000 // Task execution time, in ns (same to all tasks)
 
 
 RT_TASK task_cinematica_desc; // Task decriptor
@@ -59,6 +57,7 @@ static SDL_Surface *numbermap;
 static SDL_Surface *end;
 
 int withComputer = 0; 
+int debug = 0; 
 
 void catch_signal(int sig) {}
 
@@ -248,8 +247,8 @@ static void draw_ball() {
 	src.w = ball.w;
 	src.h = ball.h;
 
-	//int r = SDL_FillRect(screen,&src,255);
-	int r = Draw_FillCircle(screen,ball.x,ball.y,ball.w/2,255);
+	int r = SDL_FillRect(screen,&src,255);
+	//int r = Draw_FillCircle(screen,ball.x,ball.y,ball.w/2,255);
 
 	if (r !=0)
 		printf("fill rectangle faliled in func drawball()");
@@ -353,7 +352,7 @@ void task_cinematica_code(void *task_period_ns) {
 		ball.x += ball.dx;
 		ball.y += ball.dy;
 
-		rt_printf("x=%d y=%d \n", ball.x, ball.y);
+		if (debug ==1) rt_printf("x=%d y=%d \n", ball.x, ball.y);
 
 		if (ball.x < 0) {
 			score[1] += 1;
@@ -377,10 +376,10 @@ void task_cinematica_code(void *task_period_ns) {
 			//collision detected	
 			if (c == 1) {
 				if (ball.dx < 0) { //ball moving left
-					ball.dx -= 1;
+					ball.dx -= 1.15;
 				
 				} else { //ball moving right
-					ball.dx += 1;
+					ball.dx += 1.15;
 				}
 				
 				//change ball direction
@@ -435,6 +434,10 @@ void task_cinematica_code(void *task_period_ns) {
 			}
 		}
 
+		if(to!=0 && debug ==0) 
+			rt_printf("Task cinematica: measured period (ns)= %lu\n",ta-to);
+		to=ta;
+
 		simulate_load(TASK_LOAD_NS);
 	}
 	return;
@@ -474,7 +477,8 @@ void task_move_paddle_code(void *task_period_ns) {
 		}
 
 		if (keystate[SDLK_DOWN]){
-			rt_printf("pressed down!!!\n");
+			if (debug ==1)  rt_printf("User right pressed down!\n");
+			
 			if(paddle[1].y >= screen->h - paddle[1].h)
 				paddle[1].y = screen->h - paddle[1].h;
 			else
@@ -482,7 +486,7 @@ void task_move_paddle_code(void *task_period_ns) {
 		}
 
 		if (keystate[SDLK_UP]) {
-			rt_printf("pressed up!!!\n");
+			if (debug ==1)  rt_printf("User right pressed up!\n");
 			if(paddle[1].y <= 0)
 				paddle[1].y = 0;
 			else
@@ -491,7 +495,7 @@ void task_move_paddle_code(void *task_period_ns) {
 
 		if (!withComputer){
 			if (keystate[SDLK_s]){
-				rt_printf("pressed down!!!\n");
+				if (debug ==1) rt_printf("User left pressed down!\n");
 				if(paddle[0].y >= screen->h - paddle[0].h)
 					paddle[0].y = screen->h - paddle[0].h;
 				else
@@ -499,14 +503,17 @@ void task_move_paddle_code(void *task_period_ns) {
 			}
 
 			if (keystate[SDLK_w]) {
-				rt_printf("pressed up!!!\n");
+				if (debug ==1) rt_printf("User left pressed down!\n");
 				if(paddle[0].y <= 0)
 					paddle[0].y = 0;
 				else
 					paddle[0].y -= 10;
 			}
-
 		}
+
+		if(to!=0 && debug ==0) 
+			rt_printf("Task paddle: measured period (ns)= %lu\n",ta-to);
+		to=ta;
 
 		simulate_load(TASK_LOAD_NS);
 
@@ -546,66 +553,64 @@ void task_move_paddle_ai_code(void *task_period_ns) {
 			break;
 		}
 
-	int center = paddle[0].y + 25;
-	int screen_center = screen->h / 2 - 25;
-	int ball_speed = ball.dy;
+		int center = paddle[0].y + 25;
+		int screen_center = screen->h / 2 - 25;
+		int ball_speed = ball.dy;
 
-	if (ball_speed < 0) {
-		ball_speed = -ball_speed;
-	}
+		if (ball_speed < 0) {
+			ball_speed = -ball_speed;
+		}
 
-	//ball moving right
-	if (ball.dx > 0) {
-		
-		//return to center position
-		if (center < screen_center) {
-			paddle[0].y += ball_speed;
+		//ball moving right
+		if (ball.dx > 0) {
+			//return to center position
+			if (center < screen_center) {
+				paddle[0].y += ball_speed;
+			} else {
+				paddle[0].y -= ball_speed;	
+			}
+		//ball moving left
 		} else {
-			paddle[0].y -= ball_speed;	
-		}
-	//ball moving left
-	} else {
-		//ball moving down
-		if (ball.dy > 0) { 
-			
-			if (ball.y > center) { 
-				paddle[0].y += ball_speed;
+			//ball moving down
+			if (ball.dy > 0) { 
+				if (ball.y > center) { 
+					paddle[0].y += ball_speed;
 
-			} else { 
-				paddle[0].y -= ball_speed;
+				} else { 
+					paddle[0].y -= ball_speed;
+				}
 			}
+			
+			//ball moving up
+			if (ball.dy < 0) {
+				if (ball.y < center) { 
+					paddle[0].y -= ball_speed;
+				
+				} else {
+					paddle[0].y += ball_speed;
+				}
+			}
+
+			//ball moving stright across
+			if (ball.dy == 0) {
+				
+				if (ball.y < center) { 
+					paddle[0].y -= 10;
+				} else {
+					paddle[0].y += 10;
+				}
+			}	 		
 		}
 		
-		//ball moving up
-		if (ball.dy < 0) {
-		
-			if (ball.y < center) { 
-				paddle[0].y -= ball_speed;
-			
-			} else {
-				paddle[0].y += ball_speed;
-			}
-		}
+		if(to!=0 && debug ==0) 
+			rt_printf("Task paddle ai: measured period (ns)= %lu\n",ta-to);
+		to=ta;
 
-		//ball moving stright across
-		if (ball.dy == 0) {
-			
-			if (ball.y < center) { 
-				paddle[0].y -= 10;
-			} else {
-				paddle[0].y += 10;
-			}
-		}	 		
-	}
-
-	simulate_load(TASK_LOAD_NS);
+		simulate_load(TASK_LOAD_NS);
 
 	}
 	return;
 }
-
-
-
 
 
 void init_xenomai() {
@@ -662,14 +667,23 @@ void startup(){
 int main(int argc, char **argv) {
 
 
-	if (argc != 3){
-		printf("Usage: ./pong [name_user1] [name_user2 OR 'computer'] \n");
-		return 0; 
+	if (argv[1] != NULL && argv[2] != NULL){
+		
+		if(strcmp(argv[1], "computer") == 0 && strcmp(argv[2], "debug") == 0 ){
+			debug =1;
+			withComputer = 1; 
+		}
+
+	}
+	else if (argv[1] != NULL ){
+		if(strcmp(argv[1], "computer") == 0){
+			withComputer = 1; 
+		}
+		else if (strcmp(argv[1], "debug") == 0) {
+			debug = 1; 
+		}
 	}
 
-	if(strcmp(argv[2], "computer") == 0){
-		withComputer = 1; 
-	}
 
 	init_xenomai(); 
 
@@ -762,40 +776,29 @@ int main(int argc, char **argv) {
 		draw_background();
 
 		if (state == 2) {
-		
+
 			if (keystate[SDLK_SPACE]) {
 				state = 0;
 				//delay for a little bit so the space bar press dosnt get triggered twice
 				//while the main menu is showing
-            			SDL_Delay(500);
+    			SDL_Delay(500);
 			}
 
-			if (r == 1) {
-
-				//if player 1 is AI if player 1 was human display the return value of r not 3
+			if (r == 1) //if player 1 is AI if player 1 was human display the return value of r not 3
 				draw_game_over(3);
-
-			} else {
-			
-				//display gameover
+			else //display gameover
 				draw_game_over(r);
-			}
-				
-		//display the game
-		} else {
+		
+		} else { //display the game
 			
 			//check score
 			r = check_score();
 			
-			if (r == 1) {
-				
+			if (r == 1)
+				state = 2;
+			else if (r == 2)
 				state = 2;	
-
-			} else if (r == 2){
 			
-				state = 2;	
-			}
-
 			//draw net
 			draw_net();
 
@@ -818,10 +821,9 @@ int main(int argc, char **argv) {
 		next_game_tick += 1000 / 60;
 		sleep = next_game_tick - SDL_GetTicks();
 	
-		if( sleep >= 0 ) {
-
-            		SDL_Delay(sleep);
-        	}
+		if(sleep >= 0) {
+    		SDL_Delay(sleep);
+    	}
 	}
 	
 	return 0;
