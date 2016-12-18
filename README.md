@@ -73,10 +73,28 @@ make install
 sudo apt-get install libsdl1.2-dev
 
 ## Execution
-
+```
 make
-./pong [name_user1] [name_user2 OR 'computer'] 
+```
+* multiplayer (player 1: keyUP, keyDown; player 2: W, S ): 
 
+```
+./pong 
+```
+* show ball position and keys pressed
+```
+./pong debug
+```
+* Play against computer
+```
+./pong computer
+```
+* Two lasted features 
+```
+./pong computer debug
+```
+
+* Pressed ‘q’ to finish 
 
 
 ## Report and presentation
