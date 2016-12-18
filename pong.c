@@ -17,8 +17,8 @@
 #define TASK_MODE 0   // No flags
 #define TASK_STKSZ 0  // Default stack size
 
-#define TASK_CINEMATICA_PRIO 99  // RT priority [0..99]
-#define TASK_CINEMATICA_PERIOD_NS 100000000 // Task period, in ns
+#define TASK_CINEMATICS_PRIO 99  // RT priority [0..99]
+#define TASK_CINEMATICS_PERIOD_NS 100000000 // Task period, in ns
 
 #define TASK_MOVE_PADDLE_PRIO 99  // RT priority [0..99]
 #define TASK_MOVE_PADDLE_PERIOD_NS 90000000 // Task period, in ns
@@ -29,7 +29,7 @@
 #define TASK_LOAD_NS 10000000 // Task execution time, in ns (same to all tasks)
 
 
-RT_TASK task_cinematica_desc; // Task decriptor
+RT_TASK task_cinematics_desc; // Task decriptor
 RT_TASK task_move_paddle_desc; // Task decriptor
 RT_TASK task_move_paddle_ai_desc; // Task decriptor
 
@@ -322,9 +322,9 @@ static void draw_player_1_score() {
 }
 
 /*
-* Task cinematica aka DEUS implementation
+* Task cinematics aka DEUS implementation
 */
-void task_cinematica_code(void *task_period_ns) {
+void task_cinematics_code(void *task_period_ns) {
 	RT_TASK *curtask;
 	RT_TASK_INFO curtaskinfo;
 	int *task_period;
@@ -435,7 +435,7 @@ void task_cinematica_code(void *task_period_ns) {
 		}
 
 		if(to!=0 && debug ==0) 
-			rt_printf("Task cinematica: measured period (ns)= %lu\n",ta-to);
+			rt_printf("Task cinematics: measured period (ns)= %lu\n",ta-to);
 		to=ta;
 
 		simulate_load(TASK_LOAD_NS);
@@ -625,19 +625,19 @@ void init_xenomai() {
 void startup(){
 	int err; 
 	
-	int task_cinematica_period_ns=TASK_CINEMATICA_PERIOD_NS; 
+	int task_cinematics_period_ns=TASK_CINEMATICS_PERIOD_NS; 
 	int task_move_paddle_period_ns=TASK_MOVE_PADDLE_PERIOD_NS; 
 	int task_move_paddle_ai_period_ns=TASK_MOVE_PADDLE_AI_PERIOD_NS; 
 
 
-	err=rt_task_create(&task_cinematica_desc, "Task cinematica", TASK_STKSZ, TASK_CINEMATICA_PRIO, TASK_MODE);
+	err=rt_task_create(&task_cinematics_desc, "Task cinematics", TASK_STKSZ, TASK_CINEMATICS_PRIO, TASK_MODE);
 	
 	if(err) {
-		rt_printf("Error creating task cinematica (error code = %d)\n",err);
+		rt_printf("Error creating task cinematics (error code = %d)\n",err);
 	} else 
-		rt_printf("Task cinematica created successfully\n");
+		rt_printf("Task cinematics created successfully\n");
 
-	rt_task_start(&task_cinematica_desc, &task_cinematica_code, (void *)&task_cinematica_period_ns);
+	rt_task_start(&task_cinematics_desc, &task_cinematics_code, (void *)&task_cinematics_period_ns);
 
 
 	err=rt_task_create(&task_move_paddle_desc, "Task move paddle", TASK_STKSZ, TASK_MOVE_PADDLE_PRIO, TASK_MODE);
@@ -767,8 +767,9 @@ int main(int argc, char **argv) {
 		keystate = SDL_GetKeyState(NULL);
 		
 		/* Respond to input. */
-		if (keystate[SDLK_ESCAPE]) {
+		if (keystate[SDLK_q]) {
 			quit = 1;
+			printf("Exit (q)\n");
 		}
 		
 
@@ -776,13 +777,6 @@ int main(int argc, char **argv) {
 		draw_background();
 
 		if (state == 2) {
-
-			if (keystate[SDLK_SPACE]) {
-				state = 0;
-				//delay for a little bit so the space bar press dosnt get triggered twice
-				//while the main menu is showing
-    			SDL_Delay(500);
-			}
 
 			if (r == 1) //if player 1 is AI if player 1 was human display the return value of r not 3
 				draw_game_over(3);
