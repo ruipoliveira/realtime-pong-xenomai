@@ -21,10 +21,10 @@
 #define TASK_CINEMATICS_PERIOD_NS 100000000 // Task period, in ns
 
 #define TASK_MOVE_PADDLE_PRIO 99  // RT priority [0..99]
-#define TASK_MOVE_PADDLE_PERIOD_NS 90000000 // Task period, in ns
+#define TASK_MOVE_PADDLE_PERIOD_NS 99000000 // Task period, in ns
 
 #define TASK_MOVE_PADDLE_AI_PRIO 99  // RT priority [0..99]
-#define TASK_MOVE_PADDLE_AI_PERIOD_NS 79000000 // Task period, in ns     --->100000000
+#define TASK_MOVE_PADDLE_AI_PERIOD_NS 99000000 // Task period, in ns
 
 #define TASK_LOAD_NS 10000000 // Task execution time, in ns (same to all tasks)
 
@@ -434,8 +434,15 @@ void task_cinematics_code(void *task_period_ns) {
 			}
 		}
 
-		if(to!=0 && debug ==0) 
-			rt_printf("Task cinematics: measured period (ns)= %lu\n",ta-to);
+		unsigned long tmaxus=0, tminus=0; 
+		if(to!=0 && debug ==0) {
+
+			if(ta-to > tmaxus || tmaxus ==0)
+				tmaxus = ta-to; 
+			if(ta-to < tminus || tminus ==0)
+				tminus = ta-to; 		
+			rt_printf("Task cinematics: gap = %lu | Maximum = %6lu | Minumum = %6lu (ns)\n",ta-to, tmaxus,tminus);
+		}
 		to=ta;
 
 		simulate_load(TASK_LOAD_NS);
@@ -511,8 +518,15 @@ void task_move_paddle_code(void *task_period_ns) {
 			}
 		}
 
-		if(to!=0 && debug ==0) 
-			rt_printf("Task paddle: measured period (ns)= %lu\n",ta-to);
+		unsigned long tmaxus=0, tminus=0; 
+		if(to!=0 && debug ==0) {
+
+			if(ta-to > tmaxus || tmaxus ==0)
+				tmaxus = ta-to; 
+			if(ta-to < tminus || tminus ==0)
+				tminus = ta-to; 		
+			rt_printf("Task paddle:\t gap = %lu | Maximum = %6lu | Minumum = %6lu (ns)\n",ta-to, tmaxus,tminus);
+		}
 		to=ta;
 
 		simulate_load(TASK_LOAD_NS);
@@ -602,8 +616,15 @@ void task_move_paddle_ai_code(void *task_period_ns) {
 			}	 		
 		}
 		
-		if(to!=0 && debug ==0) 
-			rt_printf("Task paddle ai: measured period (ns)= %lu\n",ta-to);
+		unsigned long tmaxus=0, tminus=0; 
+		if(to!=0 && debug ==0) {
+
+			if(ta-to > tmaxus || tmaxus ==0)
+				tmaxus = ta-to; 
+			if(ta-to < tminus || tminus ==0)
+				tminus = ta-to; 		
+			rt_printf("Task paddle ai:\t gap = %lu | Maximum = %6lu | Minumum = %6lu (ns)\n",ta-to, tmaxus,tminus);
+		}
 		to=ta;
 
 		simulate_load(TASK_LOAD_NS);
