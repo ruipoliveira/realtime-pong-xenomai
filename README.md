@@ -104,5 +104,5 @@ make
 
 ## Authors
 
-* Adriano Oliveira ()
+* Adriano Oliveira (adriano.oliveira@ua.pt)
 * Rui Oliveira (ruipedrooliveira@ua.pt)
