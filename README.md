@@ -96,10 +96,13 @@ make
 
 * Pressed ‘q’ to finish 
 
+![alt tag](https://raw.githubusercontent.com/ruipoliveira/realtime-pong-xenomai/master/resources/output.png)
+
+
 
 ## Report and presentation
-* [presentation (pdf)](https://github.com/ruipoliveira)
-* [report portuguese version (pdf)](https://github.com/ruipoliveira)
+* [presentation (pdf)](https://github.com/ruipoliveira/realtime-pong-xenomai/blob/master/resources/project_pong_ppt.pdf)
+* [report portuguese version (pdf)](https://github.com/ruipoliveira/realtime-pong-xenomai/blob/master/resources/STR-project_pong-g3-67851-68779.pdf)
 
 
 ## Authors
